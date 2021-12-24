@@ -161,16 +161,20 @@ services:
       - NAME=${PECAN_NAME:-docker}
       - USER=${PECAN_RSTUDIO_USER:-carya}
       - PASSWORD=${PECAN_RSTUDIO_PASS:-illinois}
+      - ROOT=TRUE
       - USERID=${UID:-1001}
       - GROUPID=${GID:-1001}
+    ports:
+      - "1000:8787"
     volumes:
       - pecan:/data
       - rstudio:/home
-    labels:
-      - "traefik.enable=true"
-      - "traefik.backend=rstudio"
-      - "traefik.port=80"
-      - "traefik.frontend.rule=${TRAEFIK_HOST:-}PathPrefixStrip:/rstudio"
+      - /data/:/save
+    #labels:
+    #  - "traefik.enable=true"
+    #  - "traefik.backend=rstudio"
+    #  - "traefik.port=80"
+    #  - "traefik.frontend.rule=${TRAEFIK_HOST:-}PathPrefixStrip:/rstudio"
  
   # ----------------------------------------------------------------------
   # PEcAn application
@@ -253,9 +257,23 @@ services:
   # ----------------------------------------------------------------------
 
   # PEcAn basgra model runner
-  basgra:
-    user: "${UID:-1001}:${GID:-1001}"
-    image: pecan/model-basgra-basgra_n_v1.0:${PECAN_VERSION:-latest}
+  #basgra:
+  #  user: "${UID:-1001}:${GID:-1001}"
+  #  image: pecan/model-basgra-basgra_n_v1.0:${PECAN_VERSION:-latest}
+  #  restart: unless-stopped
+  #  networks:
+  #    - pecan
+  #  environment:
+  #    - RABBITMQ_URI=${RABBITMQ_URI:-amqp://guest:guest@rabbitmq/%2F}
+  #  depends_on:
+  #     - rabbitmq
+  #  volumes:
+  #    - pecan:/data
+
+  # PEcAn LINKAGES model runner
+  linkages:
+    user: "${UID:-1001}:${GID:-1001}" 
+    image: pecan/model-linkages-r_version:${PECAN_VERSION:-latest}
     restart: unless-stopped
     networks:
       - pecan
@@ -267,46 +285,46 @@ services:
       - pecan:/data
 
   # PEcAn sipnet model runner
-  sipnet:
-    user: "${UID:-1001}:${GID:-1001}"
-    image: pecan/model-sipnet-r136:${PECAN_VERSION:-latest}
-    restart: unless-stopped
-    networks:
-      - pecan
-    environment:
-      - RABBITMQ_URI=${RABBITMQ_URI:-amqp://guest:guest@rabbitmq/%2F}
-    depends_on:
-       - rabbitmq
-    volumes:
-      - pecan:/data
+  #sipnet:
+  #  user: "${UID:-1001}:${GID:-1001}"
+  #  image: pecan/model-sipnet-r136:${PECAN_VERSION:-latest}
+  #  restart: unless-stopped
+  #  networks:
+  #    - pecan
+  #  environment:
+  #    - RABBITMQ_URI=${RABBITMQ_URI:-amqp://guest:guest@rabbitmq/%2F}
+  #  depends_on:
+  #     - rabbitmq
+  #  volumes:
+  #    - pecan:/data
 
   # PEcAn ED model runner
-  ed2:
-    user: "${UID:-1001}:${GID:-1001}"
-    image: pecan/model-ed2-2.2.0:${PECAN_VERSION:-latest}
-    restart: unless-stopped
-    networks:
-      - pecan
-    environment:
-      - RABBITMQ_URI=${RABBITMQ_URI:-amqp://guest:guest@rabbitmq/%2F}
-    depends_on:
-       - rabbitmq
-    volumes:
-      - pecan:/data
-
+  #ed2:
+  #  user: "${UID:-1001}:${GID:-1001}"
+  #  image: pecan/model-ed2-2.2.0:${PECAN_VERSION:-latest}
+  #  restart: unless-stopped
+  #  networks:
+  #    - pecan
+  #  environment:
+  #    - RABBITMQ_URI=${RABBITMQ_URI:-amqp://guest:guest@rabbitmq/%2F}
+  #  depends_on:
+  #     - rabbitmq
+  #  volumes:
+  #    - pecan:/data
+  
   # PEcAn MAESPA model runner
-  maespa:
-    user: "${UID:-1001}:${GID:-1001}"
-    image: pecan/model-maespa-git:${PECAN_VERSION:-latest}
-    restart: unless-stopped
-    networks:
-      - pecan
-    environment:
-      - RABBITMQ_URI=${RABBITMQ_URI:-amqp://guest:guest@rabbitmq/%2F}
-    depends_on:
-       - rabbitmq
-    volumes:
-      - pecan:/data
+  #maespa:
+  #  user: "${UID:-1001}:${GID:-1001}"
+  #  image: pecan/model-maespa-git:${PECAN_VERSION:-latest}
+  #  restart: unless-stopped
+  #  networks:
+  #    - pecan
+  #  environment:
+  #    - RABBITMQ_URI=${RABBITMQ_URI:-amqp://guest:guest@rabbitmq/%2F}
+  #  depends_on:
+  #     - rabbitmq
+  #  volumes:
+  #    - pecan:/data
 
   # ----------------------------------------------------------------------
   # Shiny Apps
