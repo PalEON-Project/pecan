@@ -94,7 +94,8 @@ write.config.LINKAGES <- function(defaults = NULL, trait.values, settings, run.i
   
   fdat <- read.csv(system.file("fdat.csv", package = "linkages"), header = FALSE)  #litter quality parameters
   clat <- read.csv(system.file("clat.csv", package = "linkages"), header = FALSE)
-  load(system.file("switch.mat.Rdata", package = "linkages"))
+  #load(system.file("switch.mat.Rdata", package = "linkages"))
+  load('/data/dbfiles/switch.mat.Rdata')
   
   if(!is.null(inputs)){
     climate_file <- inputs$met$path
@@ -104,13 +105,14 @@ write.config.LINKAGES <- function(defaults = NULL, trait.values, settings, run.i
     load(climate_file) 
   }
   
-  temp.mat <- matrix(temp.mat[which(rownames(temp.mat)%in%start.year:end.year),],ncol=12,byrow=F)
-  precip.mat <- matrix(precip.mat[which(rownames(precip.mat)%in%start.year:end.year),],ncol=12,byrow=F)
+  temp.mat <- as.matrix(temp.mat[which(rownames(temp.mat)%in%start.year:end.year),],ncol=12,byrow=F)	
+  precip.mat <- as.matrix(precip.mat[which(rownames(precip.mat)%in%start.year:end.year),],ncol=12,byrow=F)
   
   basesc <- 74
   basesn <- 1.64
   
-  spp.params.default <- read.csv(system.file("spp_matrix.csv", package = "linkages"))  # default spp.params
+  #spp.params.default <- read.csv(system.file("spp_matrix.csv", package = "linkages"))  # default spp.params
+  spp.params.default <- read.csv('/data/dbfiles/spp_matrix.csv')  # default spp.params
   nspec <- length(settings$pfts)
   spp.params.save <- numeric(nspec)
   for (i in seq_len(nspec)) {
@@ -138,7 +140,7 @@ write.config.LINKAGES <- function(defaults = NULL, trait.values, settings, run.i
           
           if ("SLA" %in% names(vals)) {
             sla_use <- (1/vals$SLA)*1000
-            sla_use[sla_use>5000] <- stats::rnorm(1,4000,100)
+            sla_use[sla_use>5000] <- rnorm(1,4000,100)
             spp.params[spp.params$Spp_Name == group, ]$FWT <- sla_use
             ## If change here need to change in write_restart as well
             }

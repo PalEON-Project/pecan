@@ -9,7 +9,7 @@ Sys.setenv(RLIB = rlib)
 
 # install remotes first in case packages are references in dependencies
 lapply(c(
-'araiho/linkages_package',
+'PalEON-Project/linkages_package',
 'ebimodeling/biocro',
 'MikkoPeltoniemi/Rpreles',
 'r-lib/testthat@v3.0.4',
