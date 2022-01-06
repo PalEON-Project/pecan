@@ -17,7 +17,7 @@ con = DBI::dbConnect(drv,
                      )
 
 #2. set variables for input file
-in.path = '/data/dbfiles/met_data/NORTHROUND/linkages' ## path to file directory (not including file name)
+in.path = '/data/dbfiles/met/NRP/linkages' ## path to file directory (not including file name)
 in.prefix = 'bcc.csm1.1_001.01.Rdata'
 siteid = 1000026710 ## site id number, directions on how to obtain in google doc
 startdate = '0850-01-01 00:00:00' ## adjust date years as needed for available data

@@ -22,7 +22,7 @@ library(dplyr)
 library(PEcAn.DB)
 
 # load prior information
-all.priors <- read.csv('~/data_files/priors-06-2021.csv', header = T)
+all.priors <- read.csv('~/pecan/data_files/priors-06-2021.csv', header = T)
 pfts <- as.vector(unique(all.priors$pft))
 if (pfts[length(pfts)]=='') pfts = pfts[1:(length(pfts)-1)]
 
@@ -117,7 +117,7 @@ for (pft in pft_names){
     # if there is more than one prior, remove one
     # if one is actually correct, we will find it again later
     while (length(existing.prior$name) > 1){
-      print('there is more than one prior for this PFT and variable combination, removing all of them')
+      print('there is more than one prior for this PFT and variable combination, removing associations')
       db.query(paste0("DELETE from pfts_priors WHERE prior_id = ",existing.prior$prior_id[1]), dbcon)
       
       # re-query
@@ -166,12 +166,12 @@ for (pft in pft_names){
       poss_prior <- db.query(query = query.priors, con = dbcon)
       
       # a match! we need to associate the prior with the pft
-      if (length(poss_prior) > 0){
+      if (nrow(poss_prior) > 0){
         
         print('there is a prior available')
         
         # remove all associations with pft for this variable if it has some
-        if (length(existing.prior) > 0){
+        if (nrow(existing.prior) > 0){
           # update database query
           db.query(paste0("DELETE from pfts_priors WHERE prior_id = ",existing.prior$prior_id), dbcon)
         }
@@ -192,7 +192,7 @@ for (pft in pft_names){
         print('no prior available - need to insert new')
         
         # remove all associations with pft for this variable if it has some
-        if (length(existing.prior) > 0){
+        if (nrow(existing.prior) > 0){
           # update database query
           db.query(paste0("DELETE from pfts_priors WHERE prior_id = ",existing.prior$prior_id), dbcon)
         }

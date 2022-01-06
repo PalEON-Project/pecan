@@ -157,7 +157,7 @@ write_restart.LINKAGES <- function(outdir, runid, start.time, stop.time,
     if ("HTMAX" %in% available.vals & "DBHMAX" %in% available.vals) {
       all.params$B2[pft.ind] <- 2 * (((new.params[[as.character(pft)]]$HTMAX * 100) - 137) / 
                                        (new.params[[as.character(pft)]]$DBHMAX * 100))
-      all.params$B3[pft.ind] <- (new.params[[as.character(pft)]]$HTMAX * 100 - 137) / (new.params[[as.character(pft)]]$DBHMAX * 100^2)
+      all.params$B3[pft.ind] <- (new.params[[as.character(pft)]]$HTMAX * 100 - 137) / (new.params[[as.character(pft)]]$DBHMAX * 100)^2
     }
     if ("root2shoot" %in% available.vals) {
       all.params$RTST[pft.ind] <- new.params[[as.character(pft)]]$root2shoot

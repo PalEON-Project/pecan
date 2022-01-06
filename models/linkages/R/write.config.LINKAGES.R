@@ -155,7 +155,7 @@ write.config.LINKAGES <- function(defaults = NULL, trait.values, settings, run.i
           if ("HTMAX" %in% names(vals) & "DBHMAX" %in% names(vals)) {
             spp.params[spp.params$Spp_Name == group, ]$B2 <- 2 * (((vals$HTMAX * 100) - 137) / 
                                                                     (vals$DBHMAX * 100))
-            spp.params[spp.params$Spp_Name == group, ]$B3 <- (vals$HTMAX * 100 - 137) / (vals$DBHMAX * 100^2)
+            spp.params[spp.params$Spp_Name == group, ]$B3 <- (vals$HTMAX * 100 - 137) / (vals$DBHMAX * 100)^2
           }
           
           if ("root2shoot" %in% names(vals)) {

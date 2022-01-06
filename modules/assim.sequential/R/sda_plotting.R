@@ -512,7 +512,7 @@ post.analysis.multisite.ggplot <- function(settings, t, obs.times, obs.mean, obs
   if (!requireNamespace("ggrepel", quietly = TRUE)) {
     PEcAn.logger::logger.error(
       "Package `ggrepel` not found, but needed by",
-      "PEcAn.assim.sequential::post.analysis.multisite.ggplot.",
+      "PEcAnAssimSequential::post.analysis.multisite.ggplot.",
       "Please install it and try again.")
   }
   
@@ -743,7 +743,7 @@ post.analysis.multisite.ggplot <- function(settings, t, obs.times, obs.mean, obs
   
 
   suppressMessages({
-      aoi_boundary_HARV <- sf::st_read(system.file("extdata", "eco-regionl2.json", package = "PEcAn.assim.sequential"))
+      aoi_boundary_HARV <- sf::st_read(system.file("extdata", "eco-regionl2.json", package = "PEcAnAssimSequential"))
   })
   
   #transform site locs into new projection - UTM 2163

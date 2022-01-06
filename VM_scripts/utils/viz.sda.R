@@ -5,13 +5,13 @@
 rm(list=ls())
 
 ## 1. set working directory to your SDA run 
-setwd('/save/workflows/PEcAn_14000000280')
+setwd('/save/workflows/PEcAn_99000000004')
 
 ## 2. write out species names for your run in the same order as you find them in the PFT folder of your working directory
 ## I didn't make this hard-coded because I wanted to keep things neat for nice plotting
 
-#sppname = c('red maple','american beech','red oak','black oak','eastern hemlock') # HF
-sppname = c('red maple','american beech','red spruce','white pine','red oak') # RH
+sppname = c('red maple','american beech','red oak','black oak','eastern hemlock') # HF
+#sppname = c('red maple','american beech','red spruce','white pine','red oak') # RH
 #sppname = c('red maple','sugar maple','white pine','white oak','red oak') # GE 
 #sppname = c('sugar maple', 'yellow birch', 'american beech', 'white ash', 'eastern hemlock') # NRP12
 #sppname = c('red maple','white pine','red oak', 'eastern hemlock')
@@ -19,8 +19,8 @@ sppname = c('red maple','american beech','red spruce','white pine','red oak') # 
 
 ## 3. load your obs.list file for your run as well 
 
-#load('/data/dbfiles/sda.obs.HARVARD.Rdata')
-load('/data/dbfiles/sda.obs.ROOSTER.Rdata')
+load('/data/dbfiles/sda.obs.HARVARD.Rdata')
+#load('/data/dbfiles/sda.obs.ROOSTER.Rdata')
 #load('/data/dbfiles/sda.obs.GOOSE.RData')
 #load('/data/dbfiles/sda.obs.NORTHROUND.plot2.Rdata')
 #load('/data/dbfiles/sda.obs.NORTHROUND.plots34.Rdata')

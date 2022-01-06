@@ -7,7 +7,6 @@
 # 0. Complete spin-up
 # ---------------------
 
-
 # Follow the R script for ensemble-based spin-up (workflow.spinup.R)
 
 # If you completed the entire spin-up in the web interface, you will need to follow the second step in the spin-up 
@@ -21,7 +20,7 @@ rm(list=ls())
 
 # For this step, you will need the workflow ID from your spin-up. Adjust the variable below accordingly.  
 
-ID = '14000000292'
+ID = '99000000004'
 
 # load necessary libraries
 library(dplyr)
@@ -30,7 +29,7 @@ library(PEcAn.settings)
 library(PEcAn.uncertainty)
 library(PEcAn.LINKAGES)
 library(PEcAn.visualization)
-library(PEcAn.assim.sequential)
+library(PEcAnAssimSequential)
 library(PEcAn.logger)
 library(PEcAn.DB)
 library(PEcAn.remote)
@@ -42,10 +41,10 @@ library(ncdf4) # need to put in assim.sequential
 library(corrplot)
 
 # source the assim.sequential functions that we will need 
-source('/home/carya/VM_scripts/assim.sequential.2/get_ensemble_weights.R')
-source('/home/carya/VM_scripts/assim.sequential.2/assess.params.R')
-source('/home/carya/VM_scripts/assim.sequential.2/Nimble_codes_old.R')
-source('/home/carya/VM_scripts/assim.sequential.2/Analysis_sda.R')
+#source('/home/carya/VM_scripts/assim.sequential.2/get_ensemble_weights.R')
+#source('/home/carya/VM_scripts/assim.sequential.2/assess.params.R')
+#source('/home/carya/VM_scripts/assim.sequential.2/Nimble_codes_old.R')
+#source('/home/carya/VM_scripts/assim.sequential.2/Analysis_sda.R')
 
 #source('/home/acer/models/linkages/R/write_restart.LINKAGES.R')
 
@@ -72,35 +71,35 @@ setwd(paste0('/data/workflows/PEcAn_',ID))
     <sample.parameters>TRUE</sample.parameters>
     <inputs>
       <file>
-        <input.id></input.id>  # we will load this input data later
+        <input.id></input.id> 
         <path>
           <path></path>
         </path>
         <operator>direct</operator>
-        <variable.id>1000000132</variable.id>  # if you are assimilating anything besides PFT aboveground biomass, change here
+        <variable.id>1000000132</variable.id> 
         <variable.name>
           <variable.name>AGB.pft</variable.name>
         </variable.name>
-        <min_value>0</min_value>   # ""
-        <max_value>100000000</max_value>  # ""
+        <min_value>0</min_value>  
+        <max_value>100000000</max_value>  
       </file>
     </inputs>
     <state.variables>
       <variable>
-        <variable.name>AGB.pft</variable.name>  # the min and max values set the range for what is appropriate for state variable values
-        <variable.id>1000000132</variable.id>  # ""
-        <min_value>0</min_value>   # ""
-        <max_value>100000000</max_value>  # ""
-        <unit>MgC/ha/yr</unit>  # ""
+        <variable.name>AGB.pft</variable.name>  
+        <variable.id>1000000132</variable.id>  
+        <min_value>0</min_value>  
+        <max_value>100000000</max_value>  
+        <unit>MgC/ha/yr</unit>  
       </variable>
     </state.variables>
     <spin.up>
-      <start.date>1860/01/01</start.date>  # these dates should be the same as the start and end date of your spin-up (scroll down under <run>)
+      <start.date>1900/01/01</start.date> 
       <end.date>1960/12/31</end.date>
     </spin.up>
-    <forecast.time.step>year</forecast.time.step>  # this setting controls how often the workflow is assimilating data
-    <start.date>1960/01/01</start.date>  # first year of SDA - has to be the same year as last year of spin-up
-    <end.date>2010/12/31</end.date> # last year of SDA
+    <forecast.time.step>year</forecast.time.step>  
+    <start.date>1960/01/01</start.date>  
+    <end.date>2010/12/31</end.date>
   </state.data.assimilation>
         
 ### D. Save and close the file. 
@@ -111,9 +110,9 @@ setwd(paste0('/data/workflows/PEcAn_',ID))
 
 # Adjust the file location and name of the observation data in the following section to load the correct data
 # to be assimilated into the model. 
-
+ 
 # load transformed and reformatted observation data 
-load('/data/dbfiles/sda.obs.NORTHROUND.plot34.Rdata')
+load('/data/dbfiles/sda.obs.HARVARD.Rdata')
 obs.mean <- obs.list$obs.mean
 obs.cov <- obs.list$obs.cov
 
@@ -124,16 +123,12 @@ settings <- read.settings("pecan.SDA.xml")
 # 4. Run SDA workflow
 # ----------------------
 
-# steps of function
-# 1. read settings 
-# 2. splitting met for those models that need it 
-# 3. tests for data assimilation 
-# 4. set up for data assimilation
-# 5. start loop through time
-
+# The following is an edited version of the PEcAnAssimSequential R script called sda.enkf_refactored.R
+# To easily determine what has been changed between this file and the PEcAn script, compare the rest of the script 
+# (i.e., after the "set variables" section) with the PEcAn file with diffchecker.com. Then you can see specifically what changes
+# have been made on the ND end and what new updates we need to add/test from the PEcAn end. 
 
 # set variables for workflow 
-IC = NULL
 Q = NULL
 adjustment = TRUE
 restart = NULL
@@ -145,667 +140,657 @@ control=list(trace=T,
              debug=FALSE,
              pause = FALSE)
 
-# sda.enkf(settings, obs.mean, obs.cov, Q = NULL, restart=F, 
-#          control=list(trace=T,
-#                       interactivePlot=T,
-#                       TimeseriesPlot=T,
-#                       BiasPlot=F,
-#                       plot.title=NULL,
-#                       debug=F))
-
-if (control$debug) browser()
-
-###-------------------------------------------------------------------###
-### 1. read settings                                                  ###
-###-------------------------------------------------------------------###
-weight_list <- list()
-adjustment <- settings$state.data.assimilation$adjustment
-model      <- settings$model$type
-write      <- settings$database$bety$write
-defaults   <- settings$pfts
-outdir     <- settings$modeloutdir # currently model runs locally, this will change if remote is enabled
-rundir     <- settings$host$rundir
-host       <- settings$host
-forecast.time.step <- settings$state.data.assimilation$forecast.time.step  #idea for later generalizing
-nens       <- as.numeric(settings$ensemble$size)
-processvar <- as.logical(settings$state.data.assimilation$process.variance)
-var.names <- sapply(settings$state.data.assimilation$state.variable, '[[', "variable.name")
-names(var.names) <- NULL
-input.vars <- sapply(settings$state.data.assimilation$inputs, '[[', "variable.name")
-operators <- sapply(settings$state.data.assimilation$inputs, '[[', "operator")
-
-# site details
-# first col is the long second is the lat and row names are the site ids
-site.ids <- settings$run$site$id
-site.locs <- data.frame(Lon = as.numeric(settings$run$site$lon),
-                        Lat = as.numeric(settings$run$site$lat))
-colnames(site.locs) <- c("Lon","Lat")
-rownames(site.locs) <- site.ids
-
-# determine years for data assimilation
-# start cut determines what is the best year to start spliting the met based on if we start with a restart or not.  
-if (!is.null(restart)) {
-  start.cut <-lubridate::ymd_hms(settings$state.data.assimilation$start.date, truncated = 3)-1
-  Start.Year <-(lubridate::year(settings$state.data.assimilation$start.date)-1)
-}else{
-  start.cut <-lubridate::ymd_hms(settings$state.data.assimilation$start.date, truncated = 3)
-  Start.Year <-(lubridate::year(settings$state.data.assimilation$start.date))
-}
-End.Year <-   lubridate::year(settings$state.data.assimilation$end.date) # years that assimilations will be done for - obs will be subsetted based on this
-
-# hack to get the years correct
-restart = FALSE
-
-# filtering obs data based on years specifited in setting > state.data.assimilation
-assimyears<-Start.Year:End.Year
-obs.mean <- obs.mean[sapply(lubridate::year(names(obs.mean)), function(obs.year) obs.year %in% (assimyears))]
-obs.cov <- obs.cov[sapply(lubridate::year(names(obs.cov)), function(obs.year) obs.year %in% (assimyears))]
-
-# dir address based on the end date
-if(!dir.exists("SDA")) dir.create("SDA",showWarnings = F)
-
-# get model specific functions
-do.call("library", list(paste0("PEcAn.", model)))
-my.write_restart <- paste0("write_restart.", model)
-my.read_restart <- paste0("read_restart.", model)
-my.split_inputs  <- paste0("split_inputs.", model)
-
-# double checking some of the inputs 
-if (is.null(adjustment)) adjustment <- TRUE # unsure if this is necessary
-
-###-------------------------------------------------------------------###
-### 2. splitting/cutting the mets to the start and the end of SDA     ###
-###-------------------------------------------------------------------### 
-
-# models that don't need split_inputs, check register file for that
-register.xml <- system.file(paste0("register.", model, ".xml"), package = paste0("PEcAn.", model))
-register <- XML::xmlToList(XML::xmlParse(register.xml))
-no_split <- !as.logical(register$exact.dates)
-if (!exists(my.split_inputs)  &  !no_split) {
-  PEcAn.logger::logger.warn(my.split_inputs, "does not exist")
-  PEcAn.logger::logger.severe("please make sure that the PEcAn interface is loaded for", model)
-  PEcAn.logger::logger.warn(
-    my.split_inputs,
-    "If your model does not need the split function you can specify that in register.Model.xml in model's inst folder by adding <exact.dates>FALSE</exact.dates> tag."
-  )
-}
-
-if(!no_split){ 
-  for(i in seq_along(settings$run$inputs$met$path)){
-    
-    ### model specific split inputs
-    settings$run$inputs$met$path[[i]] <- do.call(my.split_inputs, 
-                                                 args = list(settings = settings, 
-                                                             start.time = start.cut, 
-                                                             stop.time = lubridate::ymd_hms(settings$state.data.assimilation$end.date, truncated = 3, tz="UTC"),
-                                                             inputs =  settings$run$inputs$met$path[[i]],
-                                                             overwrite=T)) 
-  }
-}
-
-###-------------------------------------------------------------------###
-### 3. tests before data assimilation                                 ###
-###-------------------------------------------------------------------###
-
-# getting times where we have observations
-# there will be an error if we need to fix them in next step
-obs.times <- names(obs.mean)
-obs.times.POSIX <- lubridate::ymd_hms(obs.times)
-
-### TO DO: Need to find a way to deal with years before 1000 for paleon ### need a leading zero
-
-for (i in seq_along(obs.times)) {
-  if (is.na(obs.times.POSIX[i])) {
-    if (is.na(lubridate::ymd(obs.times[i]))) {
-      PEcAn.logger::logger.warn("Error: no dates associated with observations")
-    } else {
-      ### data does not have time associated with dates 
-      ### adding 12:59:59PM assuming next time step starts one second later
-      PEcAn.logger::logger.warn("Pumpkin Warning: adding one minute before midnight time assumption to dates associated with data")
-      obs.times.POSIX[i] <- strptime(paste(obs.times[i], "23:59:59"),format="%Y-%m-%d %H:%M:%S",tz='UTC')#lubridate::ymd_hms(paste(obs.times[i], "23:59:59"))
-    }
-  }
-}
-obs.times <- obs.times.POSIX
-
-###-------------------------------------------------------------------###
-### 4. set up for data assimilation                                   ###
-###-------------------------------------------------------------------###
-
-# set up storage variables for DA 
-nt          <- length(obs.times)
-if (nt==0)     PEcAn.logger::logger.severe('There has to be at least one observation, before you can start the SDA code.')
-FORECAST    <- ANALYSIS <- list()
-enkf.params <- list()
-
-# shape parameters estimated over time for process covariance
-aqq         <- NULL
-bqq         <- numeric(nt + 1)
-
-# track range of state variables 
-# interval remade everytime depending on data at time t
-# state.interval stays constant and converts new.analysis to be within the correct bounds
-interval    <- NULL 
-state.interval <- cbind(as.numeric(lapply(settings$state.data.assimilation$state.variables, '[[', 'min_value')),
-                        as.numeric(lapply(settings$state.data.assimilation$state.variables, '[[', 'max_value')))
-rownames(state.interval) <- var.names
-
-# parameters for ensembles should be created in main PEcAn workflow 
-# set ensemble weights - either by Rdata file or sets all to constant 1 
-if(!file.exists("weights.Rdata")){
-  PEcAn.logger::logger.warn("ensemble_weights.Rdata cannot be found. Make sure you generate samples by running the get.ensemble.weights function before running SDA if you want the ensembles to be weighted.")
-  #create null list
-  for(tt in 1:length(obs.times)){
-    weight_list[[tt]] <- rep(1,nens) #no weights
-  }
-} else{
-  load('weights.Rdata')  ## loads ensemble.samples
-  for (tt in 1:length(obs.times)){
-    weight_list[[tt]] <- wts_use_1
-  }
-}
-
-# check for and load ensemble sample data
-if(!file.exists(file.path(settings$outdir, "samples.Rdata"))) PEcAn.logger::logger.severe("samples.Rdata cannot be found. Make sure you generate samples by running the get.parameter.samples function before running SDA.")
-load(file.path(settings$outdir, "samples.Rdata"))  ## loads ensemble.samples
-
-# reformat parameters
-new.params <- list()
-for (i in seq_len(nens)) {
-  new.params[[i]] <- lapply(ensemble.samples, function(x, n) {
-    x[i, ] }, n = i)
-} 
-
-# define where time starts based on restart logical variable
-# if this is a restart, pick up where we left last time    
-if (restart){
-  if(!file.exists(file.path(settings$outdir,"SDA", "sda.output.Rdata"))){
-    PEcAn.logger::logger.warn("The SDA output from the older simulation doesn't exist.")
-    t <- 1
-  } else {
-    load(file.path(settings$outdir,"SDA", "sda.output.Rdata"))
-  }
+# sda.enkf <- function(settings,
+#                      obs.mean,
+#                      obs.cov,
+#                      Q = NULL,
+#                      restart=NULL, 
+#                      control=list(trace=TRUE,
+#                                   interactivePlot=TRUE,
+#                                   TimeseriesPlot=TRUE,
+#                                   BiasPlot=FALSE,
+#                                   plot.title=NULL,
+#                                   debug=FALSE,
+#                                   pause=FALSE),
+#                      ...) {
   
-  load(file.path(settings$outdir,"SDA", "outconfig.Rdata"))
-  run.id <- outconfig$runs$id
-  ensemble.id <- outconfig$ensemble.id
-  
-  # if you made it through the forecast and the analysis in t and failed on the analysis in t+1 so you didn't save t
-  if(length(FORECAST) == length(ANALYSIS) && length(FORECAST) > 0) t = t + length(FORECAST) 
-  
-}else{
-  t = 1
-}
 
-###-------------------------------------------------------------------###
-### 5. start data assimilation loop                                   ###
-###-------------------------------------------------------------------### 
-# nt should be 51
-for(t in t:nt){
-  
   if (control$debug) browser()
+  ###-------------------------------------------------------------------###
+  ### read settings                                                     ###
+  ###-------------------------------------------------------------------###
+  weight_list <- list()
+  adjustment <- settings$state.data.assimilation$adjustment
+  model      <- settings$model$type
+  write      <- settings$database$bety$write
+  defaults   <- settings$pfts
+  outdir     <- settings$modeloutdir # currently model runs locally, this will change if remote is enabled
+  rundir     <- settings$host$rundir
+  host       <- settings$host
+  forecast.time.step <- settings$state.data.assimilation$forecast.time.step  #idea for later generalizing
+  nens       <- as.numeric(settings$ensemble$size)
+  processvar <- as.logical(settings$state.data.assimilation$process.variance)
+  var.names <- sapply(settings$state.data.assimilation$state.variable, '[[', "variable.name")
+  names(var.names) <- NULL
   
-  # check for observations in the given year and identify year
-  obs <- which(!is.na(obs.mean[[t]]))
-  obs.year <- lubridate::year(names(obs.mean)[t])
+  input.vars <- sapply(settings$state.data.assimilation$inputs, '[[', "variable.name")
+  operators <- sapply(settings$state.data.assimilation$inputs, '[[', "operator")
   
-  ###----------------------------------------###
-  ###  A. Checking if need to run forecast
-  ###----------------------------------------###
-
-  ## First: Do we have forecast output to compare to our data?
+  # Site location first col is the long second is the lat and row names are the site ids
+  site.ids <- settings$run$site$id
   
-  # Check to see if SDA config file has been created and if there are run files for year 
-  # If not, need to run forecast for year.  
-  if(file.exists('run') & file.exists(file.path(settings$outdir,"SDA", "outconfig.Rdata"))){
-    
-    # need to load these in case during t==1 the analysis crashed so you have a forecast 
-    # but didn't get to save the sda.output.Rdata
-    load(file.path(settings$outdir,"SDA", "outconfig.Rdata")) 
-    run.id <- outconfig$runs$id
-    ensemble.id <- outconfig$ensemble.id
-    if(t==1) inputs <- outconfig$samples$met 
-    
-    # looking for file for obs.year 
-    sum_files <-
-      sum(unlist(sapply(
-        X = run.id,
-        FUN = function(x){
-          pattern = paste0(x, '/*.nc$')[1]
-          grep(
-            pattern = pattern,
-            x = list.files(file.path(outdir,x), "*.nc$", recursive = F, full.names = T)
-          )
-        },
-        simplify = T
-      )))
+  site.locs <- data.frame(Lon = as.numeric(settings$run$site$lon),
+                          Lat = as.numeric(settings$run$site$lat))
+  colnames(site.locs) <- c("Lon","Lat")
+  rownames(site.locs) <- site.ids
+  # start cut determines what is the best year to start spliting the met based on if we start  with a restart or not.  
+  if (!is.null(restart)) {
+    start.cut <-lubridate::ymd_hms(settings$state.data.assimilation$start.date, truncated = 3)-1
+    Start.Year <-(lubridate::year(settings$state.data.assimilation$start.date)-1)
     
   }else{
-    sum_files <- 0 # if rundir or SDA outconfig hasn't been created yet 
+    start.cut <-lubridate::ymd_hms(settings$state.data.assimilation$start.date, truncated = 3)
+    Start.Year <-(lubridate::year(settings$state.data.assimilation$start.date))
   }
   
-  ###----------------------------------###
-  ###  B. Running forecast if needed
-  ###----------------------------------###
+  End.Year <-   lubridate::year(settings$state.data.assimilation$end.date) # years that assimilations will be done for - obs will be subsetted based on this
   
-  # if there are no files in the outdir for year, we need to run the forecast so we set up for that 
-  if (sum_files == 0){
-    
-    ###--------------------------------------###
-    ###  i. Setting up SV inputs if needed
-    ###--------------------------------------###
-    
-    # WHY ARE INPUTS SPLIT IN THIS LOOP?
-    
-    # splitting the state variable input for models which need it 
-    inputs.split <- list()
-    if(!no_split & exists('outconfig')){
-      for(i in seq_len(nens)){
-        # model specific split inputs
-        inputs.split$samples[i] <- do.call(
-          my.split_inputs,
-          args = list(
-            settings = settings,
-            start.time = (lubridate::ymd_hms(
-              obs.times[t - 1], truncated = 3, tz = "UTC"
-            )),
-            stop.time = (lubridate::ymd_hms(
-              obs.times[t], truncated = 3, tz = "UTC"
-            )),
-            inputs = inputs$samples[[i]]
-          )
-        )
-      } 
+  # MK: hack to get the years correct
+  # This wouldn't be a problem (I think) if we were running the SDA as part of the PEcAn workflow, 
+  # but since we are doing it separately, we have to make a few changes. 
+  restart = FALSE
+  
+  # filtering obs data based on years specifited in setting > state.data.assimilation
+  assimyears<-Start.Year:End.Year
+  obs.mean <- obs.mean[sapply(lubridate::year(names(obs.mean)), function(obs.year) obs.year %in% (assimyears))]
+  obs.cov <- obs.cov[sapply(lubridate::year(names(obs.cov)), function(obs.year) obs.year %in% (assimyears))]
+  # dir address based on the end date
+  if(!dir.exists("SDA")) dir.create("SDA",showWarnings = F)
+  #--get model specific functions
+  do.call("library", list(paste0("PEcAn.", model)))
+  my.write_restart <- paste0("write_restart.", model)
+  my.read_restart <- paste0("read_restart.", model)
+  my.split_inputs  <- paste0("split_inputs.", model)
+  #- Double checking some of the inputs
+  if (is.null(adjustment)) adjustment <- TRUE
+  # models that don't need split_inputs, check register file for that
+  register.xml <- system.file(paste0("register.", model, ".xml"), package = paste0("PEcAn.", model))
+  register <- XML::xmlToList(XML::xmlParse(register.xml))
+  no_split <- !as.logical(register$exact.dates)
+  
+  if (!exists(my.split_inputs)  &  !no_split) {
+    PEcAn.logger::logger.warn(my.split_inputs, "does not exist")
+    PEcAn.logger::logger.severe("please make sure that the PEcAn interface is loaded for", model)
+    PEcAn.logger::logger.warn(
+      my.split_inputs,
+      "If your model does not need the split function you can specify that in register.Model.xml in model's inst folder by adding <exact.dates>FALSE</exact.dates> tag."
+    )
+  }
+  ###-------------------------------------------------------------------###
+  ### Splitting/Cutting the mets to the start and the end  of SDA       ###
+  ###-------------------------------------------------------------------### 
+
+  if(!no_split){ 
+    for(i in seq_along(settings$run$inputs$met$path)){
       
-    }else{
-      # if t == 0 : we need to set SDA configs file
-      if(t > 1) inputs.split <- inputs
+      ### model specific split inputs
+      settings$run$inputs$met$path[[i]] <- do.call(my.split_inputs, 
+                                                   args = list(settings = settings, 
+                                                               start.time = start.cut, 
+                                                               stop.time = lubridate::ymd_hms(settings$state.data.assimilation$end.date, truncated = 3, tz="UTC"),
+                                                               inputs =  settings$run$inputs$met$path[[i]],
+                                                               overwrite=T)) 
     }
-    
-    ###-------------------------###
-    ###  ii. Setting up restart
-    ###-------------------------###
-    
-    ## Second: Has the analysis been run for the past year? 
-    # If yes, then we restart from analysis. 
-    # If not, we set it to null and start from the beginning. 
-
-    if(exists('new.state')){
-      restart.arg<-list(runid = run.id, 
-                        start.time = lubridate::ymd_hms(obs.times[t - 1], truncated = 3),
-                        stop.time = lubridate::ymd_hms(obs.times[t], truncated = 3), 
-                        settings = settings,
-                        new.state = new.state, 
-                        new.params = new.params, 
-                        inputs = inputs.split, 
-                        RENAME = TRUE,
-                        ensemble.id=ensemble.id)
-    }else{ 
-      restart.arg = NULL
-    }
-    
-    ###-------------------------------------###
-    ###  iii. Writing configs for model runs
-    ###-------------------------------------###
-    rm(X_tmp, files, outconfig) # this clears up some memory on the RStudio Server
-
-    # Writing the config and submunning the model and reading the outputs for each ensemble
-    outconfig <- write.ensemble.configs(defaults = settings$pfts, 
-                                        ensemble.samples = ensemble.samples, 
-                                        settings = settings,
-                                        model = settings$model$type, 
-                                        write.to.db = settings$database$bety$write,
-                                        restart = restart.arg)
-    
-    # Save outconfig file for ensembles
-    save(outconfig, file = file.path(settings$outdir,"SDA", "outconfig.Rdata"))
+  }
+  #if (control$debug) browser()
+  ###-------------------------------------------------------------------###
+  ### tests before data assimilation                                    ###
+  ###-------------------------------------------------------------------###----  
+  obs.times <- names(obs.mean)
   
-    # Extract config variables for analysis
-    run.id <- outconfig$runs$id
-    ensemble.id <- outconfig$ensemble.id
-    # for any time after t==1, the met is the split met
-    if(t==1) inputs <- outconfig$samples$met
-    
-    ###-------------------------------###
-    ###  iv. Running model ensembles 
-    ###-------------------------------###
-    
-    if(control$debug) browser()
-    
-    # submit model job submissions to RabbitMQ service
-    # you will see a lot PEcAn output after running this command
-        # - job submissions for each of the ensembles
-        # - list of jobs that are to be completed with their folder names
-        # - status bar tracking progress of those model runs until they are done
-            # (the function continues to check statuses until they are all done)
-    
-    PEcAn.remote::start.model.runs(settings, settings$database$bety$write)
+  obs.times.POSIX <- lubridate::ymd_hms(obs.times)
+  
+  ### TO DO: Need to find a way to deal with years before 1000 for paleon ### need a leading zero
+  for (i in seq_along(obs.times)) {
+    if (is.na(obs.times.POSIX[i])) {
+      if (is.na(lubridate::ymd(obs.times[i]))) {
+        PEcAn.logger::logger.warn("Error: no dates associated with observations")
+      } else {
+        ### Data does not have time associated with dates 
+        ### Adding 12:59:59PM assuming next time step starts one second later
+        PEcAn.logger::logger.warn("Pumpkin Warning: adding one minute before midnight time assumption to dates associated with data")
+        obs.times.POSIX[i] <- strptime(paste(obs.times[i], "23:59:59"),format="%Y-%m-%d %H:%M:%S",tz='UTC')#lubridate::ymd_hms(paste(obs.times[i], "23:59:59"))
+      }
+    }
+  }
+  obs.times <- obs.times.POSIX
+  #obs.times[1] <- strptime('0950-12-31 23:59:59',format="%Y-%m-%d %H:%M:%S",tz="UTC")
+  #obs.times[2] <- strptime('0970-12-31 23:59:59',format="%Y-%m-%d %H:%M:%S",tz="UTC")
+  #obs.times[3] <- strptime('0990-12-31 23:59:59',format="%Y-%m-%d %H:%M:%S",tz="UTC")
+  
+  ###-------------------------------------------------------------------###
+  ### set up for data assimilation                                      ###
+  ###-------------------------------------------------------------------###-----  
+  nt          <- length(obs.times)
+  if (nt==0)     PEcAn.logger::logger.severe('There has to be at least one observation, before you can start the SDA code.')
+  FORECAST    <- ANALYSIS <- list()
+  enkf.params <- list()
+  #The aqq and bqq are shape parameters estimated over time for the proccess covariance. #see GEF help
+  aqq         <- NULL
+  bqq         <- numeric(nt + 1)
+  ##### Creating matrices that describe the bounds of the state variables
+  ##### interval is remade everytime depending on the data at time t
+  ##### state.interval stays constant and converts new.analysis to be within the correct bounds
+  #### This needs to be moved to GEF
+  interval    <- NULL
+  state.interval <- cbind(as.numeric(lapply(settings$state.data.assimilation$state.variables, '[[', 'min_value')),
+                          as.numeric(lapply(settings$state.data.assimilation$state.variables, '[[', 'max_value')))
+  rownames(state.interval) <- var.names
+  
+  
+  # This reads ensemble weights generated by `get_ensemble_weights` function from assim.sequential package
+  # MK HACK: Since we already kind of did the "get_ensemble_weights.R" function in the spin-up section and saved the weights vector. It is easier to just use the original code here.
+  if(!file.exists("weights.Rdata")){
+    PEcAn.logger::logger.warn("ensemble_weights.Rdata cannot be found. Make sure you generate samples by running the get.ensemble.weights function before running SDA if you want the ensembles to be weighted.")
+    #create null list
+    for(tt in 1:length(obs.times)){
+      weight_list[[tt]] <- rep(1,nens) #no weights
+    }
+  } else{
+    load('weights.Rdata')  ## loads ensemble.samples
+    for (tt in 1:length(obs.times)){
+      weight_list[[tt]] <- wts_use_1
+    }
+  }
+  
+  
+  
+  #Generate parameter needs to be run before this to generate the samples. This is hopefully done in the main workflow.
+  if(!file.exists(file.path(settings$outdir, "samples.Rdata"))) PEcAn.logger::logger.severe("samples.Rdata cannot be found. Make sure you generate samples by running the get.parameter.samples function before running SDA.")
+  load(file.path(settings$outdir, "samples.Rdata"))  ## loads ensemble.samples
+  #reformatting params
+  new.params <- list()
+  for (i in seq_len(nens)) {
+    new.params[[i]] <- lapply(ensemble.samples, function(x, n) {
+      x[i, ] }, n = i)
   } 
   
-  ###--------------------------###
-  ###  C. Reading the output
-  ###--------------------------###
-  
-  # extract state variable forecasts from all ensembles for analysis (X)
-  # extract ensemble parameters data (new.params)
-  
-  # the following chunk will print all of the state variable forecasts for each of the ensembles
-
-  Sys.sleep(3000) # the input is sleep time in seconds that I used for my 1000 ensemble SDA runs
-  #Sys.sleep(300)
-  
-  
-  # the following two conditional chunks were written to help alleviate space issues on the VM while running SDA runs 
-  if (t == 2){
-    
-    # After running spin-up and t = 1 and then just the model runs for t = 2 
-    
-    # We need to make all the necessary directories to which we will move files
-    for (i in run.id){
-      dir.create(paste0('/save/workflows/PEcAn_',ID,'/run/',i), recursive = T)
-      dir.create(paste0('/save/workflows/PEcAn_',ID,'/out/',i), recursive = T)
-    }
-    
-    # Move all the NC files from the spin up years
-    for (i in run.id){
-      for (yr in (lubridate::year(settings$run$start.date)):1959){
-        file.copy(paste0('/data/workflows/PEcAn_',ID,'/out/',i, '/SDA_',yr,'.nc'),
-                  paste0('/save/workflows/PEcAn_',ID,'/out/',i, '/SDA_',yr,'.nc'))
-        try(file.remove(paste0('/data/workflows/PEcAn_',ID,'/out/',i, '/SDA_',yr,'.nc')))
-        file.copy(paste0('/data/workflows/PEcAn_',ID,'/out/',i, '/',yr,'.nc.var'),
-                  paste0('/save/workflows/PEcAn_',ID,'/out/',i, '/',yr,'.nc.var'))
-        try(file.remove(paste0('/data/workflows/PEcAn_',ID,'/out/',i, '/',yr,'.nc.var')))
-      }
-    }
-  }
-
-  if (t > 2){
-    # Once we get the restart and run our models, we no longer go back and reference the past out and restart files from previous years
-    # so let's move them to free up space
-    lastyear = obs.year - 1
-    for (i in run.id){
-      file.copy(paste0('/data/workflows/PEcAn_',ID,'/run/',i, '/',lastyear,'-12-31 23:59:59linkages.restart.Rdata'),
-                paste0('/save/workflows/PEcAn_',ID,'/run/',i, '/',lastyear,'-12-31\ 23:59:59linkages.restart.Rdata'))
-      try(file.remove(paste0('/data/workflows/PEcAn_',ID,'/run/',i, '/',lastyear,'-12-31 23:59:59linkages.restart.Rdata')))
-      file.copy(paste0('/data/workflows/PEcAn_',ID,'/out/',i, '/SDA_',lastyear,'.nc'),
-                paste0('/save/workflows/PEcAn_',ID,'/out/',i, '/SDA_',lastyear,'.nc'))
-      try(file.remove(paste0('/data/workflows/PEcAn_',ID,'/out/',i, '/SDA_',lastyear,'.nc')))
-      file.copy(paste0('/data/workflows/PEcAn_',ID,'/out/',i, '/',lastyear,'.nc.var'),
-                paste0('/save/workflows/PEcAn_',ID,'/out/',i, '/',lastyear,'.nc.var'))
-      try(file.remove(paste0('/data/workflows/PEcAn_',ID,'/out/',i, '/',lastyear,'.nc.var')))
-      file.copy(paste0('/data/workflows/PEcAn_',ID,'/out/',i, '/',lastyear,'-12-31 23:59:59linkages.out.Rdata'),
-                paste0('/save/workflows/PEcAn_',ID,'/out/',i, '/',lastyear,'-12-31\ 23:59:59linkages.out.Rdata'))
-      try(file.remove(paste0('/data/workflows/PEcAn_',ID,'/out/',i, '/',lastyear,'-12-31 23:59:59linkages.out.Rdata')))
-    }
-  }
-
-  X_tmp <- vector("list", 2)
-  X <- list()
-  for (i in seq_len(nens)) {
-    X_tmp[[i]] <- do.call(
-      my.read_restart,
-      args = list(
-        outdir = outdir,
-        runid = run.id[i],
-        stop.time = obs.times[t],
-        settings = settings,
-        var.names = var.names,
-        params = new.params[[i]]
-      )
-    )
-    
-    # we also want to carry some deterministic relationships to write_restart
-    # these will be stored in params
-    X[[i]]      <- X_tmp[[i]]$X
-    if (!is.null(X_tmp[[i]]$params))
-      new.params[[i]] <- X_tmp[[i]]$params
-  }
-  
-  #changing the extension of nc files to a more specific date related name
-  files <-  list.files(
-    path = file.path(settings$outdir, "out"),
-    "*.nc$",
-    recursive = TRUE,
-    full.names = TRUE)
-  files <-  files[grep(pattern = "SDA*", files, invert = TRUE)]
-  
-  file.rename(files, 
-              file.path(dirname(files), 
-                        paste0("SDA_", basename(files)) ) )
-  
-  # set up variables for analysis
-  X <- do.call(rbind, X)
-  
-  FORECAST[[t]] <- X
-  mu.f <- colMeans(X)
-  Pf <- cov(X)
-  
-  # check to make sure there are successful forecasts 
-  if(sum(X,na.rm=T) == 0){
-    logger.severe(paste('NO FORECAST for',obs.times[t],'Check outdir logfiles or read restart. Do you have the right variable names?'))
-  }
-  
-  ###------------------------------###
-  ###  D. Preparing observations
-  ###------------------------------###
-  
-  if (any(obs)) {
-    
-    # finding obs data - which type of observation do we have at this time point?
-    input.order <- sapply(input.vars, agrep, x=names(obs.mean[[t]]))
-    names(input.order) <- operators 
-    input.order.cov <- sapply(input.vars, agrep, x=colnames(obs.cov[[t]]))
-    names(input.order.cov) <- operators
-    choose <- unlist(sapply(colnames(X), agrep, x=names(obs.mean[[t]]), max=1, USE.NAMES = F))
-    choose.cov <- unlist(sapply(colnames(X), agrep, x=colnames(obs.cov[[t]]), max=1, USE.NAMES = F))
-    
-    # I'm unsure what this section is for 
-    if(!any(choose)){
-      choose <- unlist(input.order)
-      choose <- order(names(obs.mean[[t]]))
-      choose.cov <- unlist(input.order.cov)
-      choose.cov <- order(colnames(obs.cov[[t]]))
-    }
-    
-    # dropping observations with NA mean values   
-    na.obs.mean <- which(is.na(unlist(obs.mean[[t]][choose])))
-    if (length(na.obs.mean) > 0) choose <- choose [-na.obs.mean]
-    Y <- unlist(obs.mean[[t]][choose]) 
-    
-    # set up covariance matrix for desired species 
-    R <- as.matrix(obs.cov[[t]][choose.cov,choose.cov])
-    R[is.na(R)] <- 0.1
-    
-    if (control$debug) browser()
-    
-    # making the mapping matrix between observed data and their forecast state variables
-    # TO DO: doesn't work unless it's one to one
-    #if(length(operators)==0) H <- Construct_H(choose, Y, X)
-    H <- Construct_H(choose, Y, X)
-    
-    ###------------------------###
-    ###  E. Running analysis 
-    ###------------------------###
-    
-    # define method of analysis 
-    if(processvar == FALSE){
-      an.method<-EnKF  
-    }else{    
-        an.method <- GEF
-    }  
-    
-    # define extra args
-    if (processvar && t > 1) {
-      aqq <- enkf.params[[t-1]]$aqq
-      bqq <- enkf.params[[t-1]]$bqq
-      X.new<-enkf.params[[t-1]]$X.new
-    }
-    
-    if(!exists('Cmcmc_tobit2space')) {
-      recompileTobit = TRUE
-    }else{
-      recompileTobit = FALSE
-    }
-    
-    if(!exists('Cmcmc')) {
-      recompileGEF = TRUE
-    }else{
-      recompileGEF = FALSE
-    }
-    
-    # get weights 
-    wts <- unlist(weight_list[[t]][outconfig$samples$met$ids])
-    
-    # run analysis function
-    enkf.params[[t]] <- Analysis.sda(settings,
-                                     FUN=an.method,
-                                     Forecast=list(Q=Q, X=X),
-                                     Observed=list(R=R, Y=Y),
-                                     H=H,
-                                     extraArg=list(aqq=aqq, bqq=bqq, t=t,
-                                                   recompileTobit=recompileTobit,
-                                                   recompileGEF=recompileGEF,
-                                                   wts = wts),
-                                     nt=nt,
-                                     obs.mean=obs.mean,
-                                     obs.cov=obs.cov)
-    
-    # reading back analysis state variable variables for forecast . . 
-    #FORECAST[[t]] <- X
-    mu.f <- enkf.params[[t]]$mu.f
-    Pf <- enkf.params[[t]]$Pf
-    # and analysis
-    Pa <- enkf.params[[t]]$Pa
-    mu.a <- enkf.params[[t]]$mu.a
-    
-    # hack for zero variance
-    diag(Pf)[which(diag(Pf) == 0)] <- 0.1 
-    
-    # extracting extra outputs from analysis 
-    if (processvar) {
-      aqq <- enkf.params[[t]]$aqq
-      bqq <- enkf.params[[t]]$bqq
-      X.new <- enkf.params[[t]]$X.new
-    }
-    
-    ###-------------------------------------------###
-    ###  F. Writing trace for tracking progress
-    ###-------------------------------------------###     
-
-    if (control$trace) {
-      PEcAn.logger::logger.info ("\n --------------------------- ",
-                                 obs.year,
-                                 " ---------------------------\n")
-      PEcAn.logger::logger.info ("\n --------------Obs mean----------- \n")
-      print(Y)
-      PEcAn.logger::logger.info ("\n --------------Obs Cov ----------- \n")
-      print(R)
-      PEcAn.logger::logger.info ("\n --------------Forecast mean ----------- \n")
-      print(enkf.params[[t]]$mu.f)
-      PEcAn.logger::logger.info ("\n --------------Forecast Cov ----------- \n")
-      print(enkf.params[[t]]$Pf)
-      PEcAn.logger::logger.info ("\n --------------Analysis mean ----------- \n")
-      print(t(enkf.params[[t]]$mu.a))
-      PEcAn.logger::logger.info ("\n --------------Analysis Cov ----------- \n")
-      print(enkf.params[[t]]$Pa)
-      PEcAn.logger::logger.info ("\n ------------------------------------------------------\n")
-    }
-    if (control$debug) browser()
-    if (control$pause) readline(prompt="Press [enter] to continue \n")
-    
-  } else {
-    
-    mu.f <- as.numeric(apply(X, 2, mean, na.rm = TRUE))
-    Pf <- cov(X)
-
-    # if no process variance, forecast is the same as the analysis 
-    # if yes, no data 
-    if (!processvar) {
-      mu.a <- mu.f
-      Pa   <- Pf + Q
+  ###-------------------------------------------------------------------###
+  ### If this is a restart - Picking up were we left last time          ###
+  ###-------------------------------------------------------------------### 
+  if (restart){
+    if(!file.exists(file.path(settings$outdir,"SDA", "sda.output.Rdata"))){
+      PEcAn.logger::logger.warn("The SDA output from the older simulation doesn't exist.")
+      t <- 1
     } else {
-      mu.a <- mu.f
-      if(!exists('q.bar')){
-        q.bar <- diag(ncol(X))
-        PEcAn.logger::logger.info('Process variance not estimated. Analysis has been given uninformative process variance')
-      } 
-      Pa   <- Pf + solve(q.bar)
+      load(file.path(settings$outdir,"SDA", "sda.output.Rdata"))
     }
-    enkf.params[[t]] <- list(mu.f = mu.f, Pf = Pf, mu.a = mu.a, Pa = Pa)
-  }
-  
-  ###-------------------------------------------###
-  ###  G. Adjust/update state variable matrix
-  ###-------------------------------------------### 
-  
-  # start adjustment of state variable matrix 
-  # this step gives weights to the different ensemble members based on their likelihood given data
-  # then it adjusts the analysis mean estimates based on these weights 
-  if(adjustment){
-    # if we have process var, then x is x.new
-    if (processvar & exists('X.new')){
-      X.adj.arg <- X.new 
-    }else{ 
-      X.adj.arg <- X
-      print('Using X not X.new. GEF was skipped or process variance == FALSE')
-      }
-    analysis <- adj.ens(Pf, X.adj.arg, mu.f, mu.a, Pa)
+    
+    load(file.path(settings$outdir,"SDA", "outconfig.Rdata"))
+    run.id <- outconfig$runs$id
+    ensemble.id <- outconfig$ensemble.id
+    
+    # if(FALSE){ # I think let's do this outside of the sda function because sometimes you might want to restart from what you've set up to restart from and it's confusing if your file systems change within the function
+    #   #--- Updating the nt and etc
+    #   if(!dir.exists(file.path(settings$outdir,"SDA",assimyears[t]))) dir.create(file.path(settings$outdir,"SDA",assimyears[t]))
+    #   
+    #   # finding/moving files to it's end year dir
+    #   files.last.sda<-list.files.nodir(file.path(settings$outdir,"SDA"))
+    #   
+    #   #copying
+    #   file.copy(file.path(file.path(settings$outdir,"SDA"),files.last.sda),
+    #             file.path(file.path(settings$outdir,"SDA"),paste0(assimyears[t],"/",files.last.sda)))
+    # }
+    
+    if(length(FORECAST) == length(ANALYSIS) && length(FORECAST) > 0) t = 1 + length(FORECAST) #if you made it through the forecast and the analysis in t and failed on the analysis in t+1 so you didn't save t
+    
   }else{
-    analysis <- as.data.frame(rmvnorm(as.numeric(nrow(X)), mu.a, Pa, method = "svd"))
+    t = 1
   }
   
-  colnames(analysis) <- colnames(X)
-  
-  # map analysis vectors to be in bounds of state variables
-  if(processvar){
-    for(i in 1:ncol(analysis)){
-      int.save <- state.interval[which(startsWith(colnames(analysis)[i],
-                                                  var.names)),]
-      analysis[analysis[,i] < int.save[1],i] <- int.save[1]
-      analysis[analysis[,i] > int.save[2],i] <- int.save[2]
+  ###------------------------------------------------------------------------------------------------###
+  ### loop over time                                                                                 ###
+  ###------------------------------------------------------------------------------------------------###---- 
+  for(t in t:nt){
+    if (control$debug) browser()
+    # do we have obs for this time - what year is it ?
+    obs <- which(!is.na(obs.mean[[t]]))
+    obs.year <- lubridate::year(names(obs.mean)[t])
+    ###-------------------------------------------------------------------------###
+    ###  Taking care of Forecast. Splitting / Writting / running / reading back ###
+    ###-------------------------------------------------------------------------###-----  
+    #- Check to see if this is the first run or not and what inputs needs to be sent to write.ensemble configs
+    # Why t>1 is different ? Because the ensemble.write.config would be different. It has the restart argument and it needs it's own setup.
+    # Also, assumes that sda has gotten through at least one analysis step
+    # plus in t>1 we split the met data for the models that they need that.
+    
+    ## First question, do we have forecast output to compare to our data?
+    ## If not, need to run forecast
+    ## using paste because dont want to confuse with ensemble ids
+    if(file.exists('run') & file.exists(file.path(settings$outdir,"SDA", "outconfig.Rdata"))){
+      
+      load(file.path(settings$outdir,"SDA", "outconfig.Rdata")) #need to load these in case during t==1 the analysis crashed so you have a forecast but didn't get to save the sda.output.Rdata
+      run.id <- outconfig$runs$id
+      ensemble.id <- outconfig$ensemble.id
+      if(t==1) inputs <- outconfig$samples$met 
+      
+      sum_files <-
+        sum(unlist(sapply(
+          X = run.id,
+          FUN = function(x){
+            pattern = paste0(x, '/*.nc$')[1]
+            grep(
+              pattern = pattern,
+              x = list.files(file.path(outdir,x), "*.nc$", recursive = F, full.names = T)
+            )
+          },
+          simplify = T
+        )))
+      
+    }else{
+      sum_files <- 0 #if rundir hasn't been created yet
     }
-  }
+    
+    
+    if (sum_files == 0){ #removing:t > 1
+      #removing old simulations #why? don't we need them to restart?
+      #unlink(list.files(outdir,"*.nc",recursive = T,full.names = T))
+      #-Splitting the input for the models that they don't care about the start and end time of simulations and they run as long as their met file.
+      inputs.split <- list()
+      if(!no_split & exists('outconfig')){
+        for(i in seq_len(nens)){
+          #---------------- model specific split inputs
+          inputs.split$samples[i] <- do.call(
+            my.split_inputs,
+            args = list(
+              settings = settings,
+              start.time = (lubridate::ymd_hms(
+                obs.times[t - 1], truncated = 3, tz = "UTC"
+              )),
+              stop.time = (lubridate::ymd_hms(
+                obs.times[t], truncated = 3, tz = "UTC"
+              )),
+              inputs = inputs$samples[[i]]
+            )
+          )
+          
+        } 
+        
+      }else{
+        if(t > 1) inputs.split <- inputs
+      }
+      #---------------- setting up the restart argument
+      
+      if(exists('new.state')){ #Has the analysis been run? Yes, then restart from analysis.
+        
+        ## MK: We do not need this conditional because then the spin-up is redone again and we miss a year of assimilation. 
+        # if (t == 2) {
+        #    start.time = lubridate::ymd_hms(settings$run$start.date, truncated = 3)
+        #  } else {
+        #    start.time = lubridate::ymd_hms(obs.times[t - 1], truncated = 3)
+        #  }
+         restart.arg<-list(runid = run.id, 
+                          start.time = lubridate::ymd_hms(obs.times[t - 1], truncated = 3),
+                          #start.time = start.time,
+                          stop.time = lubridate::ymd_hms(obs.times[t], truncated = 3), 
+                          settings = settings,
+                          new.state = new.state, 
+                          new.params = new.params, 
+                          inputs = inputs.split, 
+                          RENAME = TRUE,
+                          ensemble.id=ensemble.id)
+      }else{ #The analysis has not been run. Start from beginning with no restart.
+        restart.arg = NULL
+      }
+      
+      # MK: this clears up some memory on the RStudio Server
+      if (t > 1) rm(X_tmp, files, outconfig) 
+      
+      if(t == 1){
+          config.settings = settings 
+          config.settings$run$end.date = format(lubridate::ymd_hms(obs.times[t], truncated = 3), "%Y/%m/%d")
+          } else {
+          config.settings = settings
+          }
+      
+      
+      
+      #-------------------------- Writing the config/Running the model and reading the outputs for each ensemble
+      outconfig <- write.ensemble.configs(defaults = config.settings$pfts, 
+                                          ensemble.samples = ensemble.samples, 
+                                          settings = config.settings,
+                                          model = config.settings$model$type, 
+                                          write.to.db = config.settings$database$bety$write,
+                                          restart = restart.arg)
+      
+      save(outconfig, file = file.path(settings$outdir,"SDA", "outconfig.Rdata"))
+      
+      run.id <- outconfig$runs$id
+      ensemble.id <- outconfig$ensemble.id
+      if(t==1) inputs <- outconfig$samples$met # for any time after t==1 the met is the split met
+      
+      if(control$debug) browser()
+      #-------------------------------------------- RUN
+      PEcAn.remote::start.model.runs(settings, settings$database$bety$write)
+      
+      
+      
+    } 
+    #------------------------------------------- Reading the output
+    
+    # MK: Sleep function was added because PEcAn was working faster than the files were being saved. 
+    #Sys.sleep(3000) # the input is sleep time in seconds that I used for my 1000 ensemble SDA runs
+    #Sys.sleep(300) # .... for my 200 ensemble SDA runs
+    Sys.sleep(200)
+    
+    # MK: the following two conditional chunks were written to help alleviate space issues on the VM while running SDA runs 
+    if (t == 2){
+      
+      # After running spin-up and t = 1 and then just the model runs for t = 2 
+      
+      # We need to make all the necessary directories to which we will move files
+      for (i in run.id){
+        dir.create(paste0('/save/workflows/PEcAn_',ID,'/run/',i), recursive = T)
+        dir.create(paste0('/save/workflows/PEcAn_',ID,'/out/',i), recursive = T)
+      }
+      
+      # Move all the NC files from the spin up years
+      for (i in run.id){
+        for (yr in (lubridate::year(settings$run$start.date)):1959){
+          file.copy(paste0('/data/workflows/PEcAn_',ID,'/out/',i, '/SDA_',yr,'.nc'),
+                    paste0('/save/workflows/PEcAn_',ID,'/out/',i, '/SDA_',yr,'.nc'))
+          try(file.remove(paste0('/data/workflows/PEcAn_',ID,'/out/',i, '/SDA_',yr,'.nc')))
+          file.copy(paste0('/data/workflows/PEcAn_',ID,'/out/',i, '/',yr,'.nc.var'),
+                    paste0('/save/workflows/PEcAn_',ID,'/out/',i, '/',yr,'.nc.var'))
+          try(file.remove(paste0('/data/workflows/PEcAn_',ID,'/out/',i, '/',yr,'.nc.var')))
+        }
+      }
+    }
+    if (t > 2){
+      # Once we get the restart and run our models, we no longer go back and reference the past out and restart files from previous years
+      # so let's move them to free up space
+      lastyear = obs.year - 1
+      for (i in run.id){
+        file.copy(paste0('/data/workflows/PEcAn_',ID,'/run/',i, '/',lastyear,'-12-31 23:59:59linkages.restart.Rdata'),
+                  paste0('/save/workflows/PEcAn_',ID,'/run/',i, '/',lastyear,'-12-31\ 23:59:59linkages.restart.Rdata'))
+        try(file.remove(paste0('/data/workflows/PEcAn_',ID,'/run/',i, '/',lastyear,'-12-31 23:59:59linkages.restart.Rdata')))
+        file.copy(paste0('/data/workflows/PEcAn_',ID,'/out/',i, '/SDA_',lastyear,'.nc'),
+                  paste0('/save/workflows/PEcAn_',ID,'/out/',i, '/SDA_',lastyear,'.nc'))
+        try(file.remove(paste0('/data/workflows/PEcAn_',ID,'/out/',i, '/SDA_',lastyear,'.nc')))
+        file.copy(paste0('/data/workflows/PEcAn_',ID,'/out/',i, '/',lastyear,'.nc.var'),
+                  paste0('/save/workflows/PEcAn_',ID,'/out/',i, '/',lastyear,'.nc.var'))
+        try(file.remove(paste0('/data/workflows/PEcAn_',ID,'/out/',i, '/',lastyear,'.nc.var')))
+        file.copy(paste0('/data/workflows/PEcAn_',ID,'/out/',i, '/',lastyear,'-12-31 23:59:59linkages.out.Rdata'),
+                  paste0('/save/workflows/PEcAn_',ID,'/out/',i, '/',lastyear,'-12-31\ 23:59:59linkages.out.Rdata'))
+        try(file.remove(paste0('/data/workflows/PEcAn_',ID,'/out/',i, '/',lastyear,'-12-31 23:59:59linkages.out.Rdata')))
+      }
+    }
+    
+    X_tmp <- vector("list", 2)
+    X <- list()
+    for (i in seq_len(nens)) {
+      X_tmp[[i]] <- do.call(
+        my.read_restart,
+        args = list(
+          outdir = outdir,
+          runid = run.id[i],
+          stop.time = obs.times[t],
+          settings = settings,
+          var.names = var.names,
+          params = new.params[[i]]
+        )
+      )
+      
+      # states will be in X, but we also want to carry some deterministic relationships to write_restart
+      # these will be stored in params
+      X[[i]]      <- X_tmp[[i]]$X
+      if (!is.null(X_tmp[[i]]$params))
+        new.params[[i]] <- X_tmp[[i]]$params
+      
+    }
+    
+    #----changing the extension of nc files to a more specific date related name
+  files <-  list.files(
+      path = file.path(settings$outdir, "out"),
+      "*.nc$",
+      recursive = TRUE,
+      full.names = TRUE)
+    
+    # MK: I changed this so that the file names weren't wack. I'm not sure why there was such a big difference.
+    files <-  files[grep(pattern = "SDA*", files, invert = TRUE)]
+    
+    
+    file.rename(files, 
+                file.path(dirname(files), 
+                  paste0("SDA_", basename(files))))
+    
+    #--- Reformating X
+    X <- do.call(rbind, X)
+    
+    
+    #unit scaling if needed 
+    
+    X <-  rescaling_stateVars(settings, X, multiply = TRUE)
+    
+    
+    if(sum(X,na.rm=T) == 0){
+      logger.severe(paste('NO FORECAST for',obs.times[t],'Check outdir logfiles or read restart. Do you have the right variable names?'))
+    }
+    
+    ###-------------------------------------------------------------------###
+    ###  preparing OBS                                                    ###
+    ###-------------------------------------------------------------------###
+    
+    if (any(obs)) {
+      # finding obs data
+      
+      #which type of observation do we have at this time point?
+      input.order <- sapply(input.vars, agrep, x=names(obs.mean[[t]]))
+      names(input.order) <- operators
+      input.order.cov <- sapply(input.vars, agrep, x=colnames(obs.cov[[t]]))
+      names(input.order.cov) <- operators
+      
+      ### this is for pfts not sure if it's always nessecary?
+      choose <- unlist(sapply(colnames(X), agrep, x=names(obs.mean[[t]]), max=1, USE.NAMES = F))
+      choose.cov <- unlist(sapply(colnames(X), agrep, x=colnames(obs.cov[[t]]), max=1, USE.NAMES = F))
+      
+      if(!any(choose)){
+        choose <- unlist(input.order)
+        choose <- order(names(obs.mean[[t]]))
+        choose.cov <- unlist(input.order.cov)
+        choose.cov <- order(colnames(obs.cov[[t]]))
+        #substr(names(obs.mean[[t]]),nchar(names(choose)[1])+1,max(nchar(names(obs.mean[[t]]))))
+      }
+      # dropping observations with NA mean values   
+      na.obs.mean <- which(is.na(unlist(obs.mean[[t]][choose])))
+      na.obs.cov <- which(is.na(unlist(obs.cov[[t]][choose])))
+      if (length(na.obs.mean) > 0) choose <- choose [-na.obs.mean]
+      if (length(na.obs.cov) > 0) choose.cov <- choose[-na.obs.cov]
+      
+      Y <- unlist(obs.mean[[t]][choose])
+      
+      R <- as.matrix(obs.cov[[t]][choose.cov,choose.cov])
+      R[is.na(R)]<-0.1
+      
+      if (control$debug) browser()
+      
+      # making the mapping matrix
+
+      #TO DO: doesn't work unless it's one to one
+      
+      
+      # MK: I'm not sure why this is an issue, but we can't run the GEF code unless we have an H variable to map variables. I just removed the conditional so it always happens. 
+      H <- Construct_H(choose, Y, X)
+      ###-------------------------------------------------------------------###
+      ### Analysis                                                          ###
+      ###-------------------------------------------------------------------###----
+      if(processvar == FALSE){an.method<-EnKF  }else{    an.method<-GEF   }  
+      #-extraArgs
+      if (processvar && t > 1) {
+        aqq <- enkf.params[[t-1]]$aqq
+        bqq <- enkf.params[[t-1]]$bqq
+        X.new<-enkf.params[[t-1]]$X.new
+      }
+      
+      if(!exists('Cmcmc_tobit2space')) {
+        recompileTobit = TRUE
+      }else{
+        recompileTobit = FALSE
+      }
+      
+      if(!exists('Cmcmc')) {
+        recompileGEF = TRUE
+      }else{
+        recompileGEF = FALSE
+      }
+      
+      if (is.null(outconfig$samples$met$ids)) {
+        wts <- unlist(weight_list[[t]])
+      } else {
+        wts <- unlist(weight_list[[t]][outconfig$samples$met$ids])
+      }
+      
+      #-analysis function
+      enkf.params[[t]] <- Analysis.sda(settings,
+                                       FUN=an.method,
+                                       Forecast=list(Q=Q, X=X),
+                                       Observed=list(R=R, Y=Y),
+                                       H=H,
+                                       extraArg=list(aqq=aqq, bqq=bqq, t=t,
+                                                     recompileTobit=recompileTobit,
+                                                     recompileGEF=recompileGEF,
+                                                     wts = wts),
+                                       nt=nt,
+                                       obs.mean=obs.mean,
+                                       obs.cov=obs.cov)
+      
+      #Reading back mu.f/Pf and mu.a/Pa
+      FORECAST[[t]] <- X
+      #Forecast
+      mu.f <- enkf.params[[t]]$mu.f
+      Pf <- enkf.params[[t]]$Pf
+      #Analysis
+      Pa <- enkf.params[[t]]$Pa
+      mu.a <- enkf.params[[t]]$mu.a
+      
+      diag(Pf)[which(diag(Pf) == 0)] <-
+        0.1 ## hack for zero variance
+      #extracting extra outputs
+      if (processvar) {
+        aqq <- enkf.params[[t]]$aqq
+        bqq <- enkf.params[[t]]$bqq
+        X.new <- enkf.params[[t]]$X.new
+      }
+      ###-------------------------------------------------------------------###
+      ### Trace                                                             ###
+      ###-------------------------------------------------------------------###----      
+      #-- writing Trace--------------------
+      if (control$trace) {
+        PEcAn.logger::logger.info ("\n --------------------------- ",
+                                   obs.year,
+                                   " ---------------------------\n")
+        PEcAn.logger::logger.info ("\n --------------Obs mean----------- \n")
+        print(Y)
+        PEcAn.logger::logger.info ("\n --------------Obs Cov ----------- \n")
+        print(R)
+        PEcAn.logger::logger.info ("\n --------------Forecast mean ----------- \n")
+        print(enkf.params[[t]]$mu.f)
+        PEcAn.logger::logger.info ("\n --------------Forecast Cov ----------- \n")
+        print(enkf.params[[t]]$Pf)
+        PEcAn.logger::logger.info ("\n --------------Analysis mean ----------- \n")
+        print(t(enkf.params[[t]]$mu.a))
+        PEcAn.logger::logger.info ("\n --------------Analysis Cov ----------- \n")
+        print(enkf.params[[t]]$Pa)
+        PEcAn.logger::logger.info ("\n ------------------------------------------------------\n")
+      }
+      if (control$debug) browser()
+      if (control$pause) readline(prompt="Press [enter] to continue \n")
+      
+    } else {
+      mu.f <- as.numeric(apply(X, 2, mean, na.rm = TRUE))
+      Pf <- cov(X)
+      ###-------------------------------------------------------------------###
+      ### No Observations --                                                ###----
+      ###-----------------------------------------------------------------### 
+      ### no process variance -- forecast is the same as the analysis ###
+      if (!processvar) {
+        mu.a <- mu.f
+        Pa   <- Pf + Q
+        ### yes process variance -- no data
+      } else {
+        mu.a <- mu.f
+        if(!exists('q.bar')){
+          q.bar <- diag(ncol(X))
+          PEcAn.logger::logger.info('Process variance not estimated. Analysis has been given uninformative process variance')
+        } 
+        Pa   <- Pf + solve(q.bar)
+      }
+      enkf.params[[t]] <- list(mu.f = mu.f, Pf = Pf, mu.a = mu.a, Pa = Pa)
+    }
+    ###-------------------------------------------------------------------###
+    ### adjustement/update state matrix                                   ###
+    ###-------------------------------------------------------------------###---- 
+    
+    if(adjustment){
+      #if we have process var then x is x.new
+      if (processvar & exists('X.new')) {X.adj.arg <- X.new }else{ X.adj.arg <- X ; print('using X not X.new. Assuming GEF was skipped this iteration?')}
+      analysis <-adj.ens(Pf, X.adj.arg, mu.f, mu.a, Pa)
+    }else{
+      analysis <- as.data.frame(rmvnorm(as.numeric(nrow(X)), mu.a, Pa, method = "svd"))
+    }
+    
+    colnames(analysis) <- colnames(X)
+    ##### Mapping analysis vectors to be in bounds of state variables
+    if(processvar){
+      for(i in 1:ncol(analysis)){
+        int.save <- state.interval[which(startsWith(colnames(analysis)[i],
+                                                    var.names)),]
+        analysis[analysis[,i] < int.save[1],i] <- int.save[1]
+        analysis[analysis[,i] > int.save[2],i] <- int.save[2]
+      }
+    }
+    
+    ## in the future will have to be separated from analysis
+    
+    new.state  <- as.data.frame(analysis)
+    ANALYSIS[[t]] <- analysis
+    FORECAST[[t]] <- X
+    
+    
+    ###-------------------------------------------------------------------###
+    ### save outputs                                                      ###
+    ###-------------------------------------------------------------------###---- 
+    Viz.output <- list(settings, obs.mean, obs.cov) #keeping obs data and settings for later visualization in Dashboard
+    
+    save(site.locs, t, X, FORECAST, ANALYSIS, enkf.params, new.state, new.params, run.id,
+         ensemble.id, ensemble.samples, inputs, Viz.output,  file = file.path(settings$outdir,"SDA", "sda.output.Rdata"))
+    
+    ### Interactive plotting ------------------------------------------------------ 
+    #if (t > 1 & control$interactivePlot) { #
+    #  print(interactive.plotting.sda(settings,t,obs.times,obs.mean,obs.cov,obs,X,FORECAST,ANALYSIS))
+    #}
+    
+  } ### end loop over time
   
-  new.state  <- as.data.frame(analysis)
-  ANALYSIS[[t]] <- analysis
+  # MK: transfer the rest of the data from /data to /save to clear up space
+  system(paste0('cp -r /data/workflows/PEcAn_',ID,'/* /save/workflows/PEcAn_',ID,'/'))
   
-  ###---------------------###
-  ###  H. Save outputs
-  ###---------------------### 
+  # MK: once the copy has been completed you can check to make sure all your files are there and then delete the /data copy of 
+  # of the directory
   
-  # keep obs data and settings for later visualization in Dashboard
-  Viz.output <- list(settings, obs.mean, obs.cov) 
-  save(site.locs, t, X, FORECAST, ANALYSIS, enkf.params, new.state, new.params, run.id,
-       ensemble.id, ensemble.samples, inputs, Viz.output,  file = file.path(settings$outdir,"SDA", "sda.output.Rdata"))
-  
-  # interactive plotting 
-  #if (t > 1 & control$interactivePlot) { #
-  #  print(interactive.plotting.sda(settings,t,obs.times,obs.mean,obs.cov,obs,X,FORECAST,ANALYSIS))
-  #}
-} 
-
-# end loop over time
-
-system(paste0('cp -r /data/workflows/PEcAn_',ID,'/* /save/workflows/PEcAn_',ID,'/'))
-
- 
-if (control$debug) browser()
-
-###-------------------------------------------------------------------###
-### time series plots                                                 ###
-###-------------------------------------------------------------------###----- 
-if(control$TimeseriesPlot) post.analysis.ggplot(settings,t,obs.times,obs.mean,obs.cov,obs,X,FORECAST,ANALYSIS,plot.title=control$plot.title)
-if(control$TimeseriesPlot) PEcAn.assim.sequential:::post.analysis.ggplot.violin(settings, t, obs.times, obs.mean, obs.cov, obs, X, FORECAST, ANALYSIS)
-###-------------------------------------------------------------------###
-### bias diagnostics                                                  ###
-###-------------------------------------------------------------------###----
-if(control$BiasPlot)   PEcAn.assim.sequential:::postana.bias.plotting.sda(settings,t,obs.times,obs.mean,obs.cov,obs,X,FORECAST,ANALYSIS)
-###-------------------------------------------------------------------###
-### process variance plots                                            ###
-###-------------------------------------------------------------------###----- 
-if (processvar & control$BiasPlot) postana.bias.plotting.sda.corr(t,obs.times,X,aqq,bqq)
-
-# end of SDA analysis function
-
-
-warnings()
+#   if (control$debug) browser()
+#   ###-------------------------------------------------------------------###
+#   ### time series plots                                                 ###
+#   ###-------------------------------------------------------------------###----- 
+#   if(control$TimeseriesPlot) post.analysis.ggplot(settings,t,obs.times,obs.mean,obs.cov,obs,X,FORECAST,ANALYSIS,plot.title=control$plot.title)
+#   if(control$TimeseriesPlot) PEcAn.assim.sequential::post.analysis.ggplot.violin(settings, t, obs.times, obs.mean, obs.cov, obs, X, FORECAST, ANALYSIS)
+#   ###-------------------------------------------------------------------###
+#   ### bias diagnostics                                                  ###
+#   ###-------------------------------------------------------------------###----
+#   if(control$BiasPlot)   PEcAn.assim.sequential::postana.bias.plotting.sda(settings,t,obs.times,obs.mean,obs.cov,obs,X,FORECAST,ANALYSIS)
+#   ###-------------------------------------------------------------------###
+#   ### process variance plots                                            ###
+#   ###-------------------------------------------------------------------###----- 
+#   if (processvar & control$BiasPlot) postana.bias.plotting.sda.corr(t,obs.times,X,aqq,bqq)
+#   
+# } # sda.enkf

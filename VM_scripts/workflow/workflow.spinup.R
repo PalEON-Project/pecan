@@ -59,7 +59,7 @@ options(error=quote({
 }))
 
 # set working directory to workflow folder from spinup 
-workflowID = '14000000297'
+workflowID = '99000000004'
 setwd(paste0('/data/workflows/PEcAn_',workflowID))
 
 # --------------------------------------------------
@@ -88,9 +88,10 @@ setwd(paste0('/data/workflows/PEcAn_',workflowID))
 # ensembles we are going to be using, as well as the location of the met ensembles themselves. We should have placed 
 # them in the /data folder in a previous step. We also need to know how many ensembles you are running. Adjust the 
 # variables below.
-ensemble_location = '/data/dbfiles/met/NRP/weights/ensemble-weights-NRP-prism.csv'
-metdir <- '/data/dbfiles/met/NRP/linkages/'
-n = 1000
+site = 'HARVARD'
+ensemble_location = paste0('/data/dbfiles/met/',site,'/weights/ensemble-weights-',site,'-prism.csv')
+metdir <- paste0('/data/dbfiles/met/',site,'/linkages/')
+n = 30
 
 ### A. Get our sampled list of met ensembles. 
 
