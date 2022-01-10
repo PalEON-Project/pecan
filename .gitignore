@@ -99,3 +99,4 @@ contrib/modellauncher/modellauncher
 
 # don't checkin renv
 /renv/
+data_files/
